@@ -1,0 +1,27 @@
+{
+  "id": "neodex.pixelstudio",
+  "name": "PixelStudio",
+  "version": "1.0.0",
+  "author": "NDesumeur",
+  "description": "Dessine et anime tes sprites pixel art, de 8 × 8 à 64 × 64 : crayon, gomme, pot de peinture, ligne, rectangles, pipette, déplacement et symétrie, palette de 32 couleurs modifiable, annuler et refaire. Ajoute des images d'animation avec la pelure d'oignon, regarde-les tourner à la vitesse voulue, et exporte en PNG, en planche de sprites ou en GIF animé transparent.",
+  "icon": "icon.png",
+  "entry": "index.js",
+  "view": "pixelstudio",
+  "neobase": ">=4.0.0",
+  "type": "app",
+  "category": "Outils",
+  "mobile": true,
+  "compatibility": [
+    "windows",
+    "android",
+    "linux"
+  ],
+  "syncMode": "fusion",
+  "syncInfo": "Le dessin, toutes ses images, la palette et la vitesse.",
+  "system": false,
+  "dependencies": {},
+  "sdk": "2.1.0",
+  "permissions": [
+    "storage"
+  ]
+}
