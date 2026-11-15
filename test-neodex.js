@@ -18,5 +18,7 @@ module.exports = async ({ pj, sleep }) => {
   if (!/1\/1/.test(await info())) throw new Error('annuler : ' + await info());
   await pj(`document.dispatchEvent(new KeyboardEvent('keydown', {key: 'z', ctrlKey: true})), 0`); await sleep(100);
   await pj(`document.querySelector('[data-tool=pen]').click(), 0`);
+  const over = await pj(`[...document.querySelectorAll('.appWrap *')].filter(e => e.getBoundingClientRect().right > innerWidth + 1).length`);
+  if (over) throw new Error(over + ' élément(s) débordent à droite');
   return 'crayon, pot, dupliquer, annuler ok';
 };

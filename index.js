@@ -2,26 +2,26 @@
 // palette de 32 couleurs modifiable ; images d'animation avec pelure d'oignon et lecture ; export PNG, planche et GIF animé
 // (l'encodeur GIF, LZW compris, est écrit ici, et le navigateur relit le fichier pour vérifier qu'il est bon).
 const CSS = `
-.psGrid{display:grid;grid-template-columns:200px minmax(0,1fr) 220px;gap:12px}
+.psGrid{display:grid;grid-template-columns:clamp(200px,16vw,280px) minmax(0,1fr) clamp(220px,18vw,320px);gap:clamp(12px,1.2vw,20px)}
 @media (max-width:1000px){.psGrid{grid-template-columns:minmax(0,1fr)}.psGrid>:nth-child(2){order:-1}}
 .psTools{display:grid;grid-template-columns:repeat(4,1fr);gap:4px}
-.psTools .btn{width:auto;margin:0;padding:6px 0;font-size:16px}
+.psTools .btn{width:auto;margin:0;padding:8px 0;font-size:22px;line-height:1}
 .psPal{display:grid;grid-template-columns:repeat(8,1fr);gap:3px;margin-top:8px}
 .psPal button{aspect-ratio:1;border:2px solid #000;padding:0;cursor:var(--cp,pointer)}
 .psPal button.on{outline:2px solid #fff;outline-offset:1px}
-.psCan{width:100%;max-width:min(560px,62vh);aspect-ratio:1;display:block;margin:0 auto;image-rendering:pixelated;border:2px solid var(--line);touch-action:none;cursor:crosshair;background:#1a1430}
+.psCan{width:100%;max-width:min(820px,66vh);aspect-ratio:1;display:block;margin:0 auto;image-rendering:pixelated;border:2px solid var(--line);touch-action:none;cursor:crosshair;background:#1a1430}
 .psRow{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:6px 0}
 .psRow .btn{width:auto;margin:0;padding:4px 10px}
 .psRow .f{width:auto;flex:1;min-width:0;margin:0}
 .psFrames{display:flex;gap:6px;overflow-x:auto;padding:4px 0}
 .psFrame{flex:none;border:2px solid var(--line);background:#1a1430;cursor:var(--cp,pointer);position:relative}
 .psFrame.on{border-color:var(--magenta)}
-.psFrame canvas{display:block;width:48px;height:48px;image-rendering:pixelated}
-.psFrame span{position:absolute;left:2px;top:0;font:10px monospace;color:#fff;text-shadow:1px 1px #000}
+.psFrame canvas{display:block;width:56px;height:56px;image-rendering:pixelated}
+.psFrame span{position:absolute;left:2px;top:0;font:13px monospace;color:#fff;text-shadow:1px 1px #000}
 .psPrev{width:100%;aspect-ratio:1;image-rendering:pixelated;background:#1a1430;border:2px solid var(--line);display:block}
 .psRange{-webkit-appearance:none;appearance:none;height:10px;background:var(--bg0);border:2px solid var(--line);outline:none;flex:1;min-width:60px}
 .psRange::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:22px;background:var(--magenta);border:2px solid #000;cursor:var(--cp,pointer)}
-.psInfo{font:12px monospace;color:var(--lilac);margin-top:4px}
+.psInfo{font:15px monospace;color:var(--lilac);margin-top:4px}
 `;
 const PALETTE = ['#000000', '#1a1430', '#3a2a5a', '#5a4a8a', '#8a7aa8', '#c8b8f0', '#ffffff', '#fff6e0',
   '#5a1a2a', '#a02a3a', '#e04a4a', '#ff8a6a', '#7a4a1a', '#c07a2a', '#ffb04f', '#ffd34f',
@@ -70,7 +70,7 @@ export default async function (ctx) {
   let saveT = 0; const save = () => { clearTimeout(saveT); saveT = setTimeout(() => ctx.folder.write('pixelstudio', {w: st.w, h: st.h, frames: st.frames, fps: st.fps, pal: st.pal, color: st.color, onion: st.onion, grid: st.grid}).catch(() => {}), 600); };
   // ---------- l'interface ----------
   view.innerHTML = '';
-  const wrap = el('div', 'appWrap'), head = el('div', 'agHead'), lay = el('div', 'psGrid'), left = el('div', 'sysCard px'), mid = el('div'), right = el('div', 'sysCard px');
+  const wrap = el('div', 'appWrap wide'), head = el('div', 'agHead'), lay = el('div', 'psGrid'), left = el('div', 'sysCard px'), mid = el('div'), right = el('div', 'sysCard px');
   head.append(el('span', 'label', 'PixelStudio · sprites et animations')); lay.append(left, mid, right); wrap.append(head, lay); view.append(wrap);
   const tools = el('div', 'psTools'), pal = el('div', 'psPal'), picker = el('input'), opts = el('div');
   picker.type = 'color'; picker.title = 'Changer la couleur choisie';
