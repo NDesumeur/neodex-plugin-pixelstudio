@@ -21,6 +21,8 @@ const CSS = `
 .psPrev{width:100%;aspect-ratio:1;image-rendering:pixelated;background:#1a1430;border:2px solid var(--line);display:block}
 .psRange{-webkit-appearance:none;appearance:none;height:10px;background:var(--bg0);border:2px solid var(--line);outline:none;flex:1;min-width:60px}
 .psRange::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:22px;background:var(--magenta);border:2px solid #000;cursor:var(--cp,pointer)}
+.psLay{display:flex;gap:4px;align-items:center;margin:3px 0}.psLay .btn{width:auto;margin:0;padding:3px 8px}.psLay .nm{flex:1;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.psLay.off .nm{opacity:.5}.psLayActs{display:flex;gap:4px;flex-wrap:wrap}.psLayActs .btn{width:auto;margin:0;padding:3px 8px}
 .psInfo{font:15px monospace;color:var(--lilac);margin-top:4px}
 `;
 const PALETTE = ['#000000', '#1a1430', '#3a2a5a', '#5a4a8a', '#8a7aa8', '#c8b8f0', '#ffffff', '#fff6e0',
@@ -62,12 +64,22 @@ export default async function (ctx) {
   // une image = un tableau de couleurs entières, -1 pour transparent
   const st = {w: data?.w || 32, h: data?.h || 32, frames: data?.frames?.length ? data.frames : null, cur: 0, fps: data?.fps || 8, pal: data?.pal || [...PALETTE], color: data?.color ?? 6, tool: 'pen', mirror: false, onion: data?.onion ?? true, grid: data?.grid ?? true};
   if (!st.frames) { st.frames = [Array(st.w * st.h).fill(-1)]; drawStarter(st.frames[0]); }
+  // les calques : [{name, vis, frames}], du fond vers le dessus ; un ancien dessin devient le calque 1
+  st.stack = data?.stack?.length ? data.stack : [{name: 'Calque 1', vis: true, frames: st.frames}]; st.li = Math.min(data?.li ?? 0, st.stack.length - 1);
+  Object.defineProperty(st, 'frames', {get: () => st.stack[st.li].frames, set: v => { st.stack[st.li].frames = v; }});
+  const nFrames = () => st.stack[0].frames.length;
+  function comp(fi, over) {  // l'image fondue des calques visibles ; over : l'image en cours de tracé du calque actif
+    const o = Array(st.w * st.h).fill(-1);
+    st.stack.forEach((L, li) => { if (!L.vis) return; const f = li === st.li && over ? over : L.frames[fi]; if (f) for (let i = 0; i < o.length; i++) if (f[i] >= 0) o[i] = f[i]; });
+    return o;
+  }
+  const comps = () => Array.from({length: nFrames()}, (_, i) => comp(i));
   function drawStarter(f) {  // un petit slime pour ne pas commencer devant une page vide
     const S = ['....######....', '..##ffffff##..', '.#ffffffffff#.', '#ffffffffffff#', '#fff#ffff#fff#', '#fff#ffff#fff#', '#ffffffffffff#', '#ffff####ffff#', '.#ffffffffff#.', '..##########..'];
     const c = {'#': hex2i('#2a6a3a'), f: hex2i('#9ae06a')}, ox = Math.floor((st.w - 14) / 2), oy = st.h - 12;
     S.forEach((r, y) => [...r].forEach((ch, x) => { if (c[ch] !== undefined && oy + y >= 0) f[(oy + y) * st.w + ox + x] = c[ch]; }));
   }
-  let saveT = 0; const save = () => { clearTimeout(saveT); saveT = setTimeout(() => ctx.folder.write('pixelstudio', {w: st.w, h: st.h, frames: st.frames, fps: st.fps, pal: st.pal, color: st.color, onion: st.onion, grid: st.grid}).catch(() => {}), 600); };
+  let saveT = 0; const save = () => { clearTimeout(saveT); saveT = setTimeout(() => ctx.folder.write('pixelstudio', {w: st.w, h: st.h, stack: st.stack, li: st.li, fps: st.fps, pal: st.pal, color: st.color, onion: st.onion, grid: st.grid}).catch(() => {}), 600); };
   // ---------- l'interface ----------
   view.innerHTML = '';
   const wrap = el('div', 'appWrap wide'), head = el('div', 'agHead'), lay = el('div', 'psGrid'), left = el('div', 'sysCard px'), mid = el('div'), right = el('div', 'sysCard px');
@@ -85,7 +97,7 @@ export default async function (ctx) {
   right.append(el('span', 'label', 'Aperçu'), prev, fpsRow, el('span', 'label', 'Taille'), sizeRow(), el('span', 'label', 'Exporter'), exp);
   function sizeRow() { const r = el('div', 'psRow'), s = el('select', 'f'); for (const n of [8, 16, 24, 32, 48, 64]) { const o = el('option', '', n + ' × ' + n); o.value = n; o.selected = n === st.w; s.append(o); }
     s.onchange = async () => { const n = +s.value; if (!(await ctx.host.confirm?.('Changer la taille ? Le dessin est gardé en haut à gauche (coupé s\'il dépasse).') ?? true)) { s.value = st.w; return; }
-      pushUndo(); st.frames = st.frames.map(f => { const o = Array(n * n).fill(-1); for (let y = 0; y < Math.min(n, st.h); y++) for (let x = 0; x < Math.min(n, st.w); x++) o[y * n + x] = f[y * st.w + x]; return o; }); st.w = st.h = n; save(); all(); };
+      pushUndo(); for (const L of st.stack) L.frames = L.frames.map(f => { const o = Array(n * n).fill(-1); for (let y = 0; y < Math.min(n, st.h); y++) for (let x = 0; x < Math.min(n, st.w); x++) o[y * n + x] = f[y * st.w + x]; return o; }); st.w = st.h = n; save(); all(); };
     r.append(s); return r; }
   const TOOLS = [['pen', '✏', 'Crayon (B)'], ['eraser', '⌫', 'Gomme (E)'], ['fill', '▧', 'Pot de peinture (G)'], ['pick', '⊙', 'Pipette (I) · ou clic droit'], ['line', '╱', 'Ligne (L)'], ['rect', '▭', 'Rectangle (R)'], ['frect', '■', 'Rectangle plein (Maj+R)'], ['move', '✥', 'Déplacer l\'image (M)']];
   function drawTools() {
@@ -94,7 +106,7 @@ export default async function (ctx) {
     const u = el('div', 'psRow'); u.append(btn('↶', undoDo, 'Annuler (Ctrl+Z)'), btn('↷', redoDo, 'Refaire (Ctrl+Y)'), btn('⇋', () => transform((f, x, y) => f[y * st.w + st.w - 1 - x]), 'Retourner l\'image'), btn('⟳', () => transform((f, x, y) => f[(st.h - 1 - x) * st.w + y]), 'Tourner d\'un quart')); opts.append(u);
   }
   function drawPal() { pal.replaceChildren(...st.pal.map((c, i) => { const b = el('button', i === st.color ? 'on' : ''); b.style.background = c; b.title = c; b.dataset.i = i; b.onclick = () => { st.color = i; picker.value = c; save(); drawPal(); }; return b; })); picker.value = st.pal[st.color]; }
-  picker.oninput = () => { const old = hex2i(st.pal[st.color]), nw = hex2i(picker.value); st.pal[st.color] = picker.value; st.frames.forEach(f => f.forEach((c, i) => { if (c === old) f[i] = nw; })); save(); drawPal(); draw(); drawFrames(); };  // changer une couleur la change partout
+  picker.oninput = () => { const old = hex2i(st.pal[st.color]), nw = hex2i(picker.value); st.pal[st.color] = picker.value; st.stack.forEach(L => L.frames.forEach(f => f.forEach((c, i) => { if (c === old) f[i] = nw; }))); save(); drawPal(); draw(); drawFrames(); };  // changer une couleur la change partout
   const btn = (t, f, title) => { const b = el('button', 'btn px', t); b.onclick = f; if (title) b.title = title; return b; };
   // ---------- le dessin ----------
   let overlay = null;  // aperçu d'une ligne ou d'un rectangle en cours
@@ -103,13 +115,13 @@ export default async function (ctx) {
     const Z = Math.max(1, Math.floor(560 / st.w)); can.width = st.w * Z; can.height = st.h * Z;
     g.save(); g.scale(Z, Z);
     for (let y = 0; y < st.h; y++) for (let x = 0; x < st.w; x++) { g.fillStyle = (x + y) % 2 ? '#241c40' : '#1a1430'; g.fillRect(x, y, 1, 1); }  // damier = transparent
-    if (st.onion && st.cur > 0) paintFrame(g, st.frames[st.cur - 1], .25);
-    paintFrame(g, overlay || st.frames[st.cur], 1);
+    if (st.onion && st.cur > 0) paintFrame(g, comp(st.cur - 1), .25);
+    paintFrame(g, comp(st.cur, overlay), 1);
     g.restore();
     if (st.grid && Z >= 6) { g.fillStyle = 'rgba(0,0,0,.35)'; for (let i = 1; i < st.w; i++) g.fillRect(i * Z, 0, 1, can.height); for (let i = 1; i < st.h; i++) g.fillRect(0, i * Z, can.width, 1); }
     if (st.mirror) { g.fillStyle = '#ff4fb0'; g.fillRect(can.width / 2 - 1, 0, 2, can.height); }
-    const used = new Set(st.frames.flat().filter(c => c >= 0)).size;
-    info.replaceChildren(st.w + '×' + st.h + ' · ' + (st.cur + 1) + '/' + st.frames.length + ' · ' + used + ' ', el('span', '', 'couleurs'));
+    const used = new Set(st.stack.flatMap(L => L.frames.flat()).filter(c => c >= 0)).size;
+    info.replaceChildren(st.w + '×' + st.h + ' · ' + (st.cur + 1) + '/' + nFrames() + ' · ' + used + ' ', el('span', '', 'couleurs'), ' · ' + st.stack[st.li].name);
   }
   const cellAt = e => { const r = can.getBoundingClientRect(); return [Math.floor((e.clientX - r.left) / r.width * st.w), Math.floor((e.clientY - r.top) / r.height * st.h)]; };
   const inside = (x, y) => x >= 0 && y >= 0 && x < st.w && y < st.h;
@@ -137,23 +149,41 @@ export default async function (ctx) {
   can.onpointerup = () => { if (!down) return; if (overlay) { st.frames[st.cur] = overlay; overlay = null; } down = null; changed(); };
   // ---------- annuler / refaire : l'état complet des images ----------
   const undo = [], redo = [];
-  function pushUndo() { undo.push(JSON.stringify([st.w, st.h, st.cur, st.frames])); if (undo.length > 60) undo.shift(); redo.length = 0; }
-  function restore(s) { const [w, h, cur, fr] = JSON.parse(s); st.w = w; st.h = h; st.frames = fr; st.cur = Math.min(cur, fr.length - 1); save(); all(); }
-  function undoDo() { const s = undo.pop(); if (!s) return; redo.push(JSON.stringify([st.w, st.h, st.cur, st.frames])); restore(s); }
-  function redoDo() { const s = redo.pop(); if (!s) return; undo.push(JSON.stringify([st.w, st.h, st.cur, st.frames])); restore(s); }
+  const snapS = () => JSON.stringify([st.w, st.h, st.cur, st.stack, st.li]);
+  function pushUndo() { undo.push(snapS()); if (undo.length > 60) undo.shift(); redo.length = 0; }
+  function restore(s) { const [w, h, cur, stack, li] = JSON.parse(s); st.w = w; st.h = h; st.stack = stack; st.li = Math.min(li, stack.length - 1); st.cur = Math.min(cur, nFrames() - 1); save(); all(); }
+  function undoDo() { const s = undo.pop(); if (!s) return; redo.push(snapS()); restore(s); }
+  function redoDo() { const s = redo.pop(); if (!s) return; undo.push(snapS()); restore(s); }
   function transform(fn) { pushUndo(); const f = st.frames[st.cur], o = f.slice(); for (let y = 0; y < st.h; y++) for (let x = 0; x < st.w; x++) o[y * st.w + x] = fn(f, x, y); st.frames[st.cur] = o; changed(); }
   // ---------- les images de l'animation ----------
   function drawFrames() {
-    frameBar.replaceChildren(el('span', 'label', 'Images'), btn('+ Nouvelle', () => { pushUndo(); st.frames.splice(st.cur + 1, 0, Array(st.w * st.h).fill(-1)); st.cur++; changed(true); }),
-      btn('⧉ Dupliquer', () => { pushUndo(); st.frames.splice(st.cur + 1, 0, st.frames[st.cur].slice()); st.cur++; changed(true); }),
+    frameBar.replaceChildren(el('span', 'label', 'Images'), btn('+ Nouvelle', () => { pushUndo(); for (const L of st.stack) L.frames.splice(st.cur + 1, 0, Array(st.w * st.h).fill(-1)); st.cur++; changed(true); }),
+      btn('⧉ Dupliquer', () => { pushUndo(); for (const L of st.stack) L.frames.splice(st.cur + 1, 0, L.frames[st.cur].slice()); st.cur++; changed(true); }),
       btn('◀', () => moveFrame(-1), 'Avancer cette image'), btn('▶', () => moveFrame(1), 'Reculer cette image'),
-      btn('✕', () => { if (st.frames.length < 2) return; pushUndo(); st.frames.splice(st.cur, 1); st.cur = Math.max(0, st.cur - 1); changed(true); }, 'Supprimer cette image'));
-    frames.replaceChildren(...st.frames.map((f, i) => { const d = el('div', 'psFrame' + (i === st.cur ? ' on' : '')), c = el('canvas'); c.width = st.w; c.height = st.h; paintFrame(c.getContext('2d'), f, 1); d.append(c, el('span', '', String(i + 1))); d.onclick = () => { st.cur = i; drawFrames(); draw(); }; return d; }));
+      btn('✕', () => { if (nFrames() < 2) return; pushUndo(); for (const L of st.stack) L.frames.splice(st.cur, 1); st.cur = Math.max(0, st.cur - 1); changed(true); }, 'Supprimer cette image'));
+    frames.replaceChildren(...comps().map((f, i) => { const d = el('div', 'psFrame' + (i === st.cur ? ' on' : '')), c = el('canvas'); c.width = st.w; c.height = st.h; paintFrame(c.getContext('2d'), f, 1); d.append(c, el('span', '', String(i + 1))); d.onclick = () => { st.cur = i; drawFrames(); draw(); }; return d; }));
   }
-  function moveFrame(d) { const j = st.cur + d; if (j < 0 || j >= st.frames.length) return; pushUndo(); [st.frames[st.cur], st.frames[j]] = [st.frames[j], st.frames[st.cur]]; st.cur = j; changed(true); }
+  function moveFrame(d) { const j = st.cur + d; if (j < 0 || j >= nFrames()) return; pushUndo(); for (const L of st.stack) [L.frames[st.cur], L.frames[j]] = [L.frames[j], L.frames[st.cur]]; st.cur = j; changed(true); }
+  // ---------- les calques ----------
+  const layBox = el('div');
+  function drawLayers() {
+    const rows = st.stack.map((L, i) => [L, i]).reverse().map(([L, i]) => {  // le calque du dessus en haut
+      const r = el('div', 'psLay' + (L.vis ? '' : ' off')), eye = btn(L.vis ? '◉' : '○', () => { pushUndo(); L.vis = !L.vis; changed(true); drawLayers(); }, L.vis ? 'Cacher ce calque' : 'Montrer ce calque');
+      const nm = btn(L.name, () => { st.li = i; save(); drawLayers(); draw(); }, 'Clic : dessiner sur ce calque · double-clic : le renommer'); nm.classList.add('nm'); if (i === st.li) nm.classList.add('main');
+      nm.ondblclick = async () => { const v = await ctx.host.ask?.('Nom du calque', L.name); if (v?.trim()) { L.name = v.trim().slice(0, 24); save(); drawLayers(); } };
+      r.append(eye, nm); return r; });
+    const acts = el('div', 'psLayActs');
+    acts.append(btn('+', () => addLayer(), 'Nouveau calque transparent'), btn('⧉', () => addLayer(true), 'Dupliquer le calque'), btn('▲', () => moveLayer(1), 'Monter le calque'), btn('▼', () => moveLayer(-1), 'Descendre le calque'),
+      btn('⤓', mergeDown, 'Fusionner avec le calque du dessous'), btn('✕', () => { if (st.stack.length < 2) return toast('Il faut garder au moins un calque'); pushUndo(); st.stack.splice(st.li, 1); st.li = Math.max(0, st.li - 1); changed(true); drawLayers(); }, 'Supprimer le calque'));
+    layBox.replaceChildren(el('span', 'label', 'Calques (' + st.stack.length + ')'), ...rows, acts);
+  }
+  function addLayer(dup) { pushUndo(); const A = st.stack[st.li]; st.stack.splice(st.li + 1, 0, {name: dup ? A.name + ' (copie)' : 'Calque ' + (st.stack.length + 1), vis: true, frames: dup ? A.frames.map(f => f.slice()) : A.frames.map(() => Array(st.w * st.h).fill(-1))}); st.li++; changed(true); drawLayers(); }
+  function moveLayer(d) { const j = st.li + d; if (j < 0 || j >= st.stack.length) return; pushUndo(); [st.stack[st.li], st.stack[j]] = [st.stack[j], st.stack[st.li]]; st.li = j; changed(true); drawLayers(); }
+  function mergeDown() { if (!st.li) return toast('Pas de calque en dessous'); pushUndo(); const A = st.stack[st.li], B = st.stack[st.li - 1];
+    if (A.vis) B.frames.forEach((f, fi) => A.frames[fi].forEach((c, i) => { if (c >= 0) f[i] = c; })); st.stack.splice(st.li, 1); st.li--; changed(true); drawLayers(); }
   // ---------- l'aperçu animé ----------
   let pi = 0, last = 0, raf = 0;
-  function anim(t) { if (!view.isConnected) return; if (t - last > 1000 / st.fps) { last = t; pi = (pi + 1) % st.frames.length; prev.width = st.w; prev.height = st.h; pg.clearRect(0, 0, st.w, st.h); paintFrame(pg, st.frames[pi], 1); } raf = requestAnimationFrame(anim); }
+  function anim(t) { if (!view.isConnected) return; if (t - last > 1000 / st.fps) { last = t; pi = (pi + 1) % nFrames(); prev.width = st.w; prev.height = st.h; pg.clearRect(0, 0, st.w, st.h); paintFrame(pg, comp(pi), 1); } raf = requestAnimationFrame(anim); }
   fps.oninput = () => { st.fps = +fps.value; fpsL.replaceChildren(st.fps + ' ', el('span', '', 'img/s')); save(); };
   // ---------- les exports ----------
   const download = (href, name) => { const a = el('a'); a.href = href; a.download = name; document.body.append(a); a.click(); a.remove(); };
@@ -163,9 +193,9 @@ export default async function (ctx) {
   function drawExport() {
     const sc = el('select', 'f'); for (const n of [1, 2, 4, 8, 16]) { const o = el('option', '', '× ' + n); o.value = n; o.selected = n === scaleOut; sc.append(o); } sc.onchange = () => scaleOut = +sc.value; sc.title = 'Agrandissement à l\'export';
     const r = el('div', 'psRow'); r.append(el('span', 'hint', 'Échelle'), sc);
-    const b1 = btn('PNG (cette image)', () => download(toCanvas([st.frames[st.cur]], scaleOut, 1).toDataURL('image/png'), 'sprite.png'));
-    const b2 = btn('Planche PNG', () => download(toCanvas(st.frames, scaleOut, st.frames.length).toDataURL('image/png'), 'planche-' + st.frames.length + '.png'));
-    const b3 = btn('GIF animé', () => { const gif = encodeGIF(st.frames, st.w, st.h, Math.round(100 / st.fps), scaleOut); download(URL.createObjectURL(new Blob([gif], {type: 'image/gif'})), 'animation.gif'); });
+    const b1 = btn('PNG (cette image)', () => download(toCanvas([comp(st.cur)], scaleOut, 1).toDataURL('image/png'), 'sprite.png'));
+    const b2 = btn('Planche PNG', () => download(toCanvas(comps(), scaleOut, nFrames()).toDataURL('image/png'), 'planche-' + nFrames() + '.png'));
+    const b3 = btn('GIF animé', () => { const gif = encodeGIF(comps(), st.w, st.h, Math.round(100 / st.fps), scaleOut); download(URL.createObjectURL(new Blob([gif], {type: 'image/gif'})), 'animation.gif'); });
     b3.id = 'ps_gif'; [b1, b2, b3].forEach(b => b.style.cssText = 'width:100%;margin:3px 0');
     exp.replaceChildren(r, b1, b2, b3, el('p', 'hint', 'Le GIF garde la transparence ; 256 couleurs au plus.'));
   }
@@ -175,11 +205,13 @@ export default async function (ctx) {
     const k = e.key.toLowerCase();
     if ((e.ctrlKey || e.metaKey) && k === 'z') { e.shiftKey ? redoDo() : undoDo(); e.preventDefault(); } else if ((e.ctrlKey || e.metaKey) && k === 'y') { redoDo(); e.preventDefault(); }
     else if (!e.ctrlKey && KEYS[k]) { st.tool = k === 'r' && e.shiftKey ? 'frect' : KEYS[k]; drawTools(); }
-    else if (e.key === ',' || e.key === '.') { st.cur = (st.cur + (e.key === '.' ? 1 : -1) + st.frames.length) % st.frames.length; drawFrames(); draw(); } };
+    else if (e.key === ',' || e.key === '.') { st.cur = (st.cur + (e.key === '.' ? 1 : -1) + nFrames()) % nFrames(); drawFrames(); draw(); } };
   document.addEventListener('keydown', onKey);
   ctx.onClose?.(() => { cancelAnimationFrame(raf); document.removeEventListener('keydown', onKey); });
-  function changed(framesToo) { save(); draw(); if (framesToo) drawFrames(); else { const c = frames.children[st.cur]?.firstChild; if (c) { const x2 = c.getContext('2d'); x2.clearRect(0, 0, st.w, st.h); paintFrame(x2, st.frames[st.cur], 1); } } }
-  function all() { drawTools(); drawPal(); drawFrames(); drawExport(); draw(); }
+  function changed(framesToo) { save(); draw(); if (framesToo) drawFrames(); else { const c = frames.children[st.cur]?.firstChild; if (c) { const x2 = c.getContext('2d'); x2.clearRect(0, 0, st.w, st.h); paintFrame(x2, comp(st.cur), 1); } } }
+  function all() { drawTools(); drawPal(); drawFrames(); drawLayers(); drawExport(); draw(); }
+  right.insertBefore(layBox, right.firstChild);
+  view.__ps = {st, comp, addLayer, mergeDown, moveLayer, undo: undoDo, encodeGIF};  // pour le test « local »
   fpsL.replaceChildren(st.fps + ' ', el('span', '', 'img/s')); all(); raf = requestAnimationFrame(anim);
   // vérification : un GIF de 2 images fabriqué ici est relu par le navigateur, qui doit retrouver les bonnes couleurs
   (async () => { const f1 = Array(16).fill(-1), f2 = Array(16).fill(hex2i('#ff4fb0')); f1[5] = hex2i('#4fc3ff');

@@ -6,6 +6,10 @@ Dessine et anime tes sprites pixel art, puis exporte-les pour tes jeux.
 
 ![PixelStudio](screenshots/1.jpg)
 
+## Calques (nouveau en 1.1.0)
+
+Des calques (ajouter, dupliquer, monter, descendre, fusionner, cacher, renommer) ; l'aperçu, la pelure d'oignon et les exports montrent les calques visibles fondus.
+
 ## Dessiner
 
 - Tailles de 8 × 8 à 64 × 64 ; le damier montre la transparence.
@@ -13,6 +17,10 @@ Dessine et anime tes sprites pixel art, puis exporte-les pour tes jeux.
 - **Symétrie** : tout ce que tu dessines est recopié en miroir. **Retourner** et **tourner** l'image d'un clic.
 - **Annuler** (Ctrl+Z) et **refaire** (Ctrl+Y), 60 étapes.
 - Palette de 32 couleurs : **Modifier** change la couleur choisie, et partout où elle est utilisée.
+
+## Calques (1.1.0)
+
+En haut à droite : **+** ajoute un calque transparent, ⧉ le duplique, ▲ ▼ le déplacent, ⤓ le fond avec celui du dessous, ✕ le supprime. Clique sur un nom pour dessiner sur ce calque, double-clique pour le renommer, ◉ le cache. Chaque image de l’animation existe dans tous les calques ; l’aperçu, la pelure d’oignon et les exports montrent les calques visibles fondus.
 
 ## Animer
 

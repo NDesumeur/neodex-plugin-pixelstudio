@@ -20,5 +20,15 @@ module.exports = async ({ pj, sleep }) => {
   await pj(`document.querySelector('[data-tool=pen]').click(), 0`);
   const over = await pj(`[...document.querySelectorAll('.appWrap *')].filter(e => e.getBoundingClientRect().right > innerWidth + 1).length`);
   if (over) throw new Error(over + ' élément(s) débordent à droite');
-  return 'crayon, pot, dupliquer, annuler ok';
+  // les calques : un pixel sur le calque 2 couvre le calque 1, se cache, se fusionne ; une nouvelle image arrive dans tous les calques
+  const ly = await pj(`(() => { const P = document.querySelector('.psGrid').closest('.appWrap').parentNode.__ps, st = P.st, i0 = 0;
+    const below = st.stack[0].frames[st.cur][i0]; P.addLayer(); if (st.stack.length !== 2 || st.li !== 1) return {err: 'nouveau calque'};
+    st.frames[st.cur][i0] = 0xff0000; if (P.comp(st.cur)[i0] !== 0xff0000) return {err: 'le calque du dessus ne couvre pas'};
+    st.stack[1].vis = false; if (P.comp(st.cur)[i0] !== below) return {err: 'calque caché encore visible'}; st.stack[1].vis = true;
+    [...document.querySelectorAll('.psFrames ~ *, button')].find(b => b.textContent === '+ Nouvelle').click(); if (st.stack[0].frames.length !== st.stack[1].frames.length) return {err: 'images désaccordées'};
+    P.mergeDown(); if (st.stack.length !== 1 || st.stack[0].frames[st.cur - 1][i0] !== 0xff0000) return {err: 'fusion : ' + st.stack.length};
+    P.undo(); if (st.stack.length !== 2) return {err: 'annuler la fusion'};
+    const rows = [...document.querySelectorAll('.psLay')].map(r => r.textContent).join('|'); return {rows, gif: P.encodeGIF(st.stack.map(() => P.comp(0)), st.w, st.h, 10, 1).length}; })()`);
+  if (ly.err) throw new Error(ly.err);
+  return 'calques (' + ly.rows + ') · crayon, pot, dupliquer, annuler ok';
 };

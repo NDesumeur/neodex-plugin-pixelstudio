@@ -6,6 +6,10 @@ Draw and animate your pixel art sprites, then export them for your games.
 
 ![PixelStudio](screenshots/1.jpg)
 
+## Layers (new in 1.1.0)
+
+Layers (add, duplicate, move, merge, hide, rename); the preview, onion skin and exports show the visible layers merged.
+
 ## Drawing
 
 - Sizes from 8 × 8 to 64 × 64; the checkerboard shows transparency.
@@ -13,6 +17,10 @@ Draw and animate your pixel art sprites, then export them for your games.
 - **Mirror**: everything you draw is copied mirrored. **Flip** and **rotate** the image in one click.
 - **Undo** (Ctrl+Z) and **redo** (Ctrl+Y), 60 steps.
 - 32-colour palette: **Edit** changes the chosen colour, everywhere it is used.
+
+## Layers (1.1.0)
+
+Top right: **+** adds a transparent layer, ⧉ duplicates it, ▲ ▼ move it, ⤓ merges it with the one below, ✕ deletes it. Click a name to draw on that layer, double-click to rename it, ◉ hides it. Every animation frame exists in every layer; the preview, onion skin and exports show the visible layers merged.
 
 ## Animating
 
