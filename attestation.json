@@ -1,9 +1,9 @@
 {
   "pluginId": "neodex.pixelstudio",
   "repo": "NDesumeur/neodex-plugin-pixelstudio",
-  "version": "1.0.1",
-  "sha256": "9cf9dd959de9da900cad14e7394699100e2c8cfa7a1f5f6b09342f6402ca5884",
-  "approvedAt": "2026-11-16T04:14:38.589Z",
+  "version": "1.1.0",
+  "sha256": "0c985ba2ed4fed517127d963e8009ec478bfd3a03d68f03244683f5026dbe2ab",
+  "approvedAt": "2026-11-24T15:56:20.032Z",
   "neobase": ">=4.0.0",
-  "signature": "/FPBM//I4m8eGugVs4KyP3hYLpMeTrXGMJqmX3O4IygErisBnKLmb1MRpfN3vIM2nJwCx2ER9XssBpl+QtmvBg=="
+  "signature": "6KN19ralWn3OEqFecf+hFAf8zaxJjsED+wkkGm7EzaYdltTD80Eqml118N/efney4MhXDiBm8BEbgJmq3ramDg=="
 }
